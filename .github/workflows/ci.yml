@@ -38,7 +38,7 @@ jobs:
 
       - name: 跑测试
         # 本插件零依赖（只 import node: 内置），所以不需要 npm install。
-        run: node --test test/
+        run: node --test
 
   package:
     name: package & syntax

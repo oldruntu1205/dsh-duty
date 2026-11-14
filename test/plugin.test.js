@@ -2,7 +2,7 @@
  * 插件外壳冒烟测试 —— 不装进宿主也能验证「形状对不对」。
  *
  * 用一个假 ctx 覆盖：export 名/inject、工具注册、定时器注册、一次真实工具调用。
- * 跑法：node --test test/
+ * 跑法：node --test
  */
 
 import assert from 'node:assert/strict';

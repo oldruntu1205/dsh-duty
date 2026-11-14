@@ -1,6 +1,6 @@
 /**
  * 编排层测试 —— 用真实临时目录跑通「投递 → 落库 → 重放」。
- * 跑法：node --test test/
+ * 跑法：node --test
  */
 
 import assert from 'node:assert/strict';

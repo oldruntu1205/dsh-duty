@@ -1,6 +1,6 @@
 /**
  * 领域层测试 —— 对应设计文档里的可观测断言。
- * 跑法：node --test test/
+ * 跑法：node --test
  */
 
 import assert from 'node:assert/strict';

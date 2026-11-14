@@ -34,6 +34,6 @@
 
 ## 四、验证
 
-- `node --test test/` → **94 passed / 0 failed**（原 74 + S2 新增 20，`test/s2-type-policy.test.js`）。
+- `node --test` → **94 passed / 0 failed**（原 74 + S2 新增 20，`test/s2-type-policy.test.js`）。
 - 真实数据只读冒烟（`~/.dsh/duty/state.jsonl` 5 张历史工单）：全部投影为 `type=task.manual`、`link=null`，**ID 与 dispatch 未变**。
 - 既有 `test/domain.test.js` T2（授权与上下文分离）**未修改**，仍通过。
