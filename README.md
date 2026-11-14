@@ -1,5 +1,8 @@
 # dsh-duty — DSH 桌面端「值班 Agent」
 
+[![CI](https://github.com/oldruntu1205/dsh-duty/actions/workflows/ci.yml/badge.svg)](https://github.com/oldruntu1205/dsh-duty/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 把 [deepseek-ai/dsh-superagent-prototype](https://github.com/deepseek-ai/dsh-superagent-prototype)
 的五条设计，按 **DSH 桌面端（Windows）的真实约束**重做一遍。
 

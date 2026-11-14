@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# 只读：CI 不需要写仓库
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        # 22 = engines 下限；26 = 当前开发机版本（避免只测旧运行时）
+        node: ['22', '26']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: 环境信息
+        run: node --version
+
+      - name: 跑测试
+        # 本插件零依赖（只 import node: 内置），所以不需要 npm install。
+        run: node --test test/
+
+  package:
+    name: package & syntax
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 语法检查（入口、客户端、lib）
+        run: |
+          node --check index.js
+          node --check client.js
+          for f in lib/*.js lib/sources/*.js; do node --check "$f"; done
+
+      - name: files 字段必须指向真实文件，且覆盖运行时必需项
+        # files 写错时，安装方拿到的是缺文件的包 —— 这种错在本地很难发现。
+        run: |
+          node -e "
+          const fs = require('fs');
+          const pkg = require('./package.json');
+          const missing = pkg.files.filter((f) => !fs.existsSync(f));
+          if (missing.length) { console.error('files 指向不存在的路径:', missing); process.exit(1); }
+          const need = ['index.js', 'client.js', 'cordis.patch.yml', 'README.md', 'LICENSE'];
+          const absent = need.filter((n) => !pkg.files.includes(n));
+          if (absent.length) { console.error('运行时必需文件未列入 files:', absent); process.exit(1); }
+          if (pkg.license !== 'Apache-2.0') { console.error('license 字段不是 Apache-2.0'); process.exit(1); }
+          console.log('files ok:', pkg.files.join(', '));
+          "
+
+      - name: 仓库里不得出现私钥 / 常见令牌
+        # 只扫会被发布的内容；测试里的假密钥是刻意保留的语料。
+        run: |
+          if grep -rInE '-----BEGIN [A-Z ]*PRIVATE KEY-----|ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{50,}|AKIA[0-9A-Z]{16}' \
+               --exclude-dir=.git --exclude-dir=_evidence --exclude-dir=node_modules . ; then
+            echo "::error::疑似凭据被提交"
+            exit 1
+          fi
+          echo "no credential patterns found"
