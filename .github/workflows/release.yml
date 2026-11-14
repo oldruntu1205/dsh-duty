@@ -56,26 +56,32 @@ jobs:
       - name: 创建 Release 并附产物
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
           TAG="${{ inputs.tag || github.ref_name }}"
           echo "tag: $TAG"
           # 已存在就跳过创建，避免重跑打红
-          if gh release view "$TAG" >/dev/null 2>&1; then
+          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
             echo "release $TAG 已存在，改为补传产物"
-            gh release upload "$TAG" dsh-duty-*.tgz --clobber
+            gh release upload "$TAG" dsh-duty-*.tgz --repo "$REPO" --clobber
           else
             gh release create "$TAG" dsh-duty-*.tgz \
-              --title "$TAG" --generate-notes --verify-tag
+              --repo "$REPO" --title "$TAG" --generate-notes --verify-tag
           fi
 
       - name: 核实 —— 从 Release 下载回来再核一次清单
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
           TAG="${{ inputs.tag || github.ref_name }}"
-          mkdir -p /tmp/verify && cd /tmp/verify
-          gh release download "$TAG" --pattern '*.tgz'
+          # 必须显式 --repo：换到 /tmp 之后 gh 已不在仓库上下文里，会报
+          # fatal: not a git repository（2026-11-14 首次发布实测踩到）。
+          mkdir -p /tmp/verify
+          gh release download "$TAG" --repo "$REPO" --pattern '*.tgz' --dir /tmp/verify
+          cd /tmp/verify
           T=$(ls dsh-duty-*.tgz)
+          echo "downloaded: $T"
           # 与构建阶段同一份清单比对：不只看「有没有文件」，而是「是不是同一批文件」
           tar -tzf "$T" | sort > /tmp/verify-list.txt
           sort /tmp/list.txt > /tmp/build-list.txt
