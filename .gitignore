@@ -1,0 +1,13 @@
+# 依赖
+node_modules/
+
+# 生成/审计产物（不随仓库分发）
+_evidence/
+*.log
+
+# 备份与本机配置
+*.bak
+*.bak_*
+.DS_Store
+Thumbs.db
+*.local.json

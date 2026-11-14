@@ -1,0 +1,56 @@
+{
+  "name": "dsh-duty",
+  "version": "0.2.0",
+  "private": false,
+  "type": "module",
+  "description": "DeepSeek Harness (DSH) plugin: a duty agent — delivery becomes a trigger, a gate decides what may be accepted, tickets carry an authorization snapshot, and only what needs a human is reported.",
+  "license": "Apache-2.0",
+  "author": "oldruntu1205",
+  "homepage": "https://github.com/oldruntu1205/dsh-duty#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oldruntu1205/dsh-duty.git"
+  },
+  "bugs": {
+    "url": "https://github.com/oldruntu1205/dsh-duty/issues"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "plugin",
+    "agent",
+    "ticket",
+    "duty",
+    "automation",
+    "policy"
+  ],
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./tool-filter": "./lib/tool-filter.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
