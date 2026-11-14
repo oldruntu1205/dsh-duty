@@ -38,6 +38,8 @@ jobs:
 
       - name: 跑测试
         # 本插件零依赖（只 import node: 内置），所以不需要 npm install。
+        # 注意：必须写无参的 `node --test`。`node --test <目录>` 只有 Node 26 支持，
+        # Node 22 会把目录当成模块去 require，报 Cannot find module。
         run: node --test
 
   package:
@@ -82,3 +84,20 @@ jobs:
             exit 1
           fi
           echo "no credential patterns found"
+
+  # 聚合闸门：分支保护只需要挂这一个 check。
+  # 为什么：矩阵 job 的名字随 os/node 变（test (ubuntu-latest, node 22)…），
+  # 直接把它们逐个写进必过检查，一改矩阵就失效 —— 这是最常见的「保护形同虚设」。
+  ci-ok:
+    name: ci-ok
+    if: always()
+    needs: [test, package]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 上游必须全部成功
+        run: |
+          echo "test=${{ needs.test.result }} package=${{ needs.package.result }}"
+          if [ "${{ needs.test.result }}" != "success" ] || [ "${{ needs.package.result }}" != "success" ]; then
+            echo "::error::上游 job 未全部成功，不允许合并"
+            exit 1
+          fi

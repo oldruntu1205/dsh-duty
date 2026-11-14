@@ -1,0 +1,87 @@
+name: Release
+
+# G13 的第 4、5 步：发布 + 核实。
+# 发布不是一个「感觉发完了」的动作 —— 必须把产物从 Release 下载回来再核一次，
+# 确认线上拿到的就是刚才构建的那一份。
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '已存在的 tag（如 v0.2.0）'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: build & publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: 发布前必须测试全绿
+        run: node --test
+
+      - name: 打 tarball
+        run: npm pack
+
+      - name: 构建结果的清单核对
+        run: |
+          T=$(ls dsh-duty-*.tgz)
+          echo "artifact: $T"
+          tar -tzf "$T" > /tmp/list.txt
+          for f in package/package.json package/index.js package/client.js \
+                   package/cordis.patch.yml package/README.md package/LICENSE; do
+            grep -qx "$f" /tmp/list.txt || { echo "::error::tarball 缺 $f"; exit 1; }
+          done
+          echo "manifest ok ($(wc -l < /tmp/list.txt) entries)"
+
+      - name: 创建 Release 并附产物
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          echo "tag: $TAG"
+          # 已存在就跳过创建，避免重跑打红
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "release $TAG 已存在，改为补传产物"
+            gh release upload "$TAG" dsh-duty-*.tgz --clobber
+          else
+            gh release create "$TAG" dsh-duty-*.tgz \
+              --title "$TAG" --generate-notes --verify-tag
+          fi
+
+      - name: 核实 —— 从 Release 下载回来再核一次清单
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          mkdir -p /tmp/verify && cd /tmp/verify
+          gh release download "$TAG" --pattern '*.tgz'
+          T=$(ls dsh-duty-*.tgz)
+          # 与构建阶段同一份清单比对：不只看「有没有文件」，而是「是不是同一批文件」
+          tar -tzf "$T" | sort > /tmp/verify-list.txt
+          sort /tmp/list.txt > /tmp/build-list.txt
+          if ! diff -q /tmp/build-list.txt /tmp/verify-list.txt; then
+            echo "::error::发布产物与构建产物清单不一致"
+            diff /tmp/build-list.txt /tmp/verify-list.txt || true
+            exit 1
+          fi
+          echo "verified: 线上产物与构建产物清单一致（$(wc -l < /tmp/verify-list.txt) entries）"
