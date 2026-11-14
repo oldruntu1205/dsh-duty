@@ -65,6 +65,54 @@ S2 给事件补上「业务分类 + 回链」，并把「高危类型必须人�
 这些文档记录的是**判断依据**而不只是结论：包括我们最初提议、后来被否决的 `dispatch: 'act'`，
 以及一次基于错误前提的评审结论是如何被推翻的。
 
+## 开发流程（main 受保护，只能走 PR）
+
+直接 `git push origin main` 会被拒：
+
+```
+remote: error: GH006: Protected branch update failed for refs/heads/main
+remote: - Changes must be made through a pull request.
+remote: - Required status check "ci-ok" is expected.
+```
+
+标准流程：
+
+```powershell
+git checkout -b fix/your-change
+# 改完
+git add -A; git commit -m "..."
+git push -u origin fix/your-change
+gh pr create --base main --fill          # PR 模板会问「契约面 / 高风险 / 验证 / 刻意没做什么」
+gh pr checks --watch                      # 等到 ci-ok 绿
+gh pr merge --squash --delete-branch
+```
+
+**保护规则**：必过检查只有 **`ci-ok`** 一个。它是聚合 job（`needs: [test, package]`）——
+矩阵 job 的名字会随 os / node 变化（`test (ubuntu-latest, node 22)`…），
+把它们逐个写进必过检查，一改矩阵保护就形同虚设，这是最常见的失效方式。
+
+其他已启用：禁止强推、禁止删除分支、必须解决所有 review 评论、**管理员同样受限**（`enforce_admins`）。
+
+## 发布与核实
+
+```powershell
+git tag -a v0.2.1 -m "v0.2.1 — <一句话>"
+git push origin v0.2.1
+```
+
+tag 触发 `release.yml`，自动完成四件事：
+
+1. **发布前必须测试全绿**（`node --test`，过不了就不出包）
+2. `npm pack` 打 tarball，并核对包内必需文件清单
+3. 创建 GitHub Release 并附上产物
+4. **核实**：把产物从 Release 下载回来，与构建期清单**逐行 diff**——不是「有没有文件」，是「是不是同一批文件」
+
+重发某个已存在的版本（不会产生第二个 tag）：
+
+```powershell
+gh workflow run release.yml -f tag=v0.2.0
+```
+
 ## 依赖纪律（改之前先读这段）
 
 **本插件只 import `node:` 内置模块和自己的相对文件，不 import 任何 `@deepseek-ai/*`。**
